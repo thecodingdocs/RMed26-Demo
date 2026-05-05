@@ -1,0 +1,19 @@
+body{
+  font-family: Helvetica;
+  font-size: 12pt;
+}
+h1{
+  font-size: 24pt;
+  font-weight: bold;
+}
+h2{
+  font-size: 20pt;
+  font-weight: bold;
+}
+h3{
+  font-size: 18pt;
+  font-weight: bold;
+}
+pre.r.klippy code.hljs {
+  font-size: 12px;
+}
