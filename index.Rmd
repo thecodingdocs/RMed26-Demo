@@ -7,7 +7,7 @@ output:
   html_document:
     css: style.css
     toc: true
-    toc_depth: 1
+    toc_depth: 2
     toc_float: true
 ---
 
@@ -66,9 +66,17 @@ pak::pkg_install("thecodingdocs/RosyREDCap") # installs RosyREDCap from github
 library("REDCapSync") # load the library
 library("RosyREDCap") # load the library
 
+getNamespaceExports("REDCapSync")
+getNamespaceExports("RosyREDCap")
+
 # see what projects exist with your current setup
-REDCapSync::projects$print()
+projects$any()
+projects$n()
+projects$df()$project_name # if you have projects already
+projects$print() # prints info
 ```
+
+If the following code is intimidating, then you can set up and explore projects using only the application. See step 6. `run_RosyREDCap(test_mode = TRUE)`
 
 # 1. Setup Project(s)
 
@@ -194,6 +202,12 @@ project$sync()
 
 #if you have multiple projects this will sync them all!
 sync()
+
+project$url_launch() # brings you to project home in browser
+# Choose one of "base", "home", "record_home", "records_dashboard", "api", "api_playground", "codebook", "user_rights", "setup", "logging", "designer", "dictionary", "data_quality", or "identifiers".
+project$url_launch("dictionary") # brings you to project home in browser
+
+project$url_record_launch(record = "5") # brings you to record in browser
 ```
 
 Based on your defined sync frequency, sync will do the minimum necessary to update your project object and its related datasets.
@@ -226,46 +240,7 @@ project$load_dataset("REDCapSync", envir = globalenv())
 
 # 5. Define Datasets
 
-Even though you can access data and more through the object as shown in step 4, the most powerful method for using the object is via `project$generate_dataset(...)` (for ad hoc exploration) and `project$add_dataset(...)` (for more permanently defining the dataset in a way that will be stored and refreshed during sync). The parameters in these functions allow for filtering, de-identification, date handling, labelling, and annotating records, users, and metadata with details from the log and data (such as last user to modify record). For the full use of these features it's recommended that you have logging privileges from user rights. See step 0.
-
-## project$generate_dataset(...)
-
-```{r, eval=FALSE}
-your_directory <- getwd() # make sure you have an R project set up and that you are okay with files being stored here (be very careful with cloud drives and git repos!)
-project <- setup_project(
-  project_name = "TEST_CLASSIC",
-  redcap_uri = "https://redcap.fake.edu/api/",
-  dir_path = your_directory
-)
-project$metadata$fields$field_name # view field_names
-
-dataset <- project$generate_dataset( 
-  dataset_name = "add_age_at_diagnosis",
-  envir = globalenv(), # puts in global R environment
-  transformation_type = "default",
-  merge_form_name = "merged",
-  exclude_identifiers = FALSE,
-  exclude_free_text = TRUE,
-  date_handling = "random_shift_by_project",
-  include_metadata = TRUE,
-  include_records = TRUE,
-  include_users = TRUE,
-  include_log = TRUE,
-  annotate_from_log = TRUE,
-  include_comments = TRUE
-)
-#if you wanted you could modify and save custom (without add_dataset)
-calc_age <- function(dob, age.day){
-  (lubridate::interval(dob, age.day)/lubridate::duration(num = 1, 
-        units = "years")) |> floor() |>  as.integer()
-}
-dataset$data$merged$age_at_diagnosis <- 
-  dataset$data$merged$var_birth_date |> 
-  calc_age(dataset$data$merged$diagnosis_start)
-
-dataset$save()
-# future dev will have this functionality parallel to add_dataset but as add_field and will be passed to all datasets and added to metadata (available for filter)
-```
+Even though you can access data and more through the object as shown in step 4, the most powerful method for using the object is via `project$generate_dataset(...)` (for ad hoc exploration) and `project$add_dataset(...)` (for more permanently defining the dataset in a way that will be stored and refreshed during sync). The parameters in these functions allow for filtering, de-identification, date handling, labelling, and annotating records, users, and metadata with details from the log and data (such as last user to modify record). For the full use of these features it's recommended that you have logging privileges from user rights. See REDCap Access above.
 
 ## project$add_dataset(...)
 
@@ -322,6 +297,45 @@ project$.internal$datasets |> names() # now stored internally
 project$save_datasets()
 ```
 
+## project$generate_dataset(...)
+
+```{r, eval=FALSE}
+your_directory <- getwd() # make sure you have an R project set up and that you are okay with files being stored here (be very careful with cloud drives and git repos!)
+project <- setup_project(
+  project_name = "TEST_CLASSIC",
+  redcap_uri = "https://redcap.fake.edu/api/",
+  dir_path = your_directory
+)
+project$metadata$fields$field_name # view field_names
+
+dataset <- project$generate_dataset( 
+  dataset_name = "add_age_at_diagnosis",
+  envir = globalenv(), # puts in global R environment
+  transformation_type = "default",
+  merge_form_name = "merged",
+  exclude_identifiers = FALSE,
+  exclude_free_text = TRUE,
+  date_handling = "random_shift_by_project",
+  include_metadata = TRUE,
+  include_records = TRUE,
+  include_users = TRUE,
+  include_log = TRUE,
+  annotate_from_log = TRUE,
+  include_comments = TRUE
+)
+#if you wanted you could modify and save custom (without add_dataset)
+calc_age <- function(dob, age.day){
+  (lubridate::interval(dob, age.day)/lubridate::duration(num = 1, 
+        units = "years")) |> floor() |>  as.integer()
+}
+dataset$data$merged$age_at_diagnosis <- 
+  dataset$data$merged$var_birth_date |> 
+  calc_age(dataset$data$merged$diagnosis_start)
+
+dataset$save()
+# future dev will have this functionality parallel to add_dataset but as add_field and will be passed to all datasets and added to metadata (available for filter)
+```
+
 If you have a project with 10,000 records and a dataset that filters based on a certain variable with currently 100 records, REDCapSync will check the log, update only the records (n=50) that have changed, and if necessary refresh datasets they qualify for (from add_dataset(...)). 
 
 # 6. RosyREDCap
@@ -332,7 +346,7 @@ For the demo finale... if REDCapSync is the "How" (controller), RosyREDCap is th
 
 Everything below can be explored in the RosyREDCap locally on your PC. Setting `test_mode = TRUE` launches the app with only test projects.
 
-```{r eval=FALSE}
+```{r, eval=FALSE}
 run_RosyREDCap(test_mode = TRUE)
 ```
 
@@ -340,20 +354,20 @@ run_RosyREDCap(test_mode = TRUE)
 
 ### Multiarm
 
-```{r eval=TRUE, message=FALSE}
+```{r, eval=TRUE, message=FALSE}
 projects$load("TEST_MULTIARM") |> 
   REDCap_diagram(duplicate_forms = F, hierarchical = T)
 ```
 
 ### Classic
 
-```{r eval=TRUE, message=FALSE}
+```{r, eval=TRUE, message=FALSE}
 projects$load("TEST_CLASSIC") |> REDCap_diagram(include_fields = T)
 ```
 
 ## Tables
 
-```{r eval=TRUE, message=FALSE}
+```{r, eval=TRUE, message=FALSE}
 projects$load("TEST_CLASSIC")$load_dataset("REDCapSync")$data$merged |>
   make_table1(
     group = "var_branching",
@@ -361,7 +375,7 @@ projects$load("TEST_CLASSIC")$load_dataset("REDCapSync")$data$merged |>
   )
 ```
 
-```{r eval=TRUE, message=FALSE}
+```{r, eval=TRUE, message=FALSE}
 load_project("TEST_CLASSIC")$
   generate_dataset(filter_field = "ecog_at_diagnosis", 
                    filter_choices = "0",
@@ -373,7 +387,7 @@ load_project("TEST_CLASSIC")$
 
 ## Parcats/Sankey
 
-```{r eval=TRUE, message=FALSE}
+```{r, eval=TRUE, message=FALSE, warning=FALSE}
 DF <- load_project("TEST_CLASSIC")$load_dataset("REDCapSync")$data$merged
 DF$ecog_strat <- ifelse(DF$ecog_at_diagnosis %in% c("2", "3","4"),
                          "Poor",
@@ -386,7 +400,7 @@ DF |> dplyr::select(vars) |> plotly_parcats()
 
 ## Survival
 
-```{r eval=TRUE, message=FALSE}
+```{r, eval=TRUE, message=FALSE}
 DF <- load_project("TEST_CLASSIC")$load_dataset("REDCapSync")$data$merged
 DF$ecog_strat <- ifelse(DF$ecog_at_diagnosis %in% c("2", "3","4"),
                          "Poor",
@@ -405,15 +419,17 @@ DF |>
 
 # 7. Advanced/Dev
 
-Another unique feature of REDCapSync is the ability to upload labelled data. Currently, you can use R to modify data and then upload back to REDCap. For classic REDCap projects, without events or repeating instruments, uploading data is straight forward. For more complex data, you must follow the same rules as the REDCap data import tool (using `redcap_event_name`, `redcap_repeat_instrument`, and `redcap_repeat_instance`). RosyREDCap is developing ways to modify this data without having to understand these details. 
+The core features shown above are stable and unlikely to change significantly. Below our potential areas of development following CRAN submission
 
-```{r eval=TRUE, message=FALSE}
+```{r, eval=TRUE, message=FALSE}
 projects$load("TEST_MULTIARM")$.internal |> listviewer::jsonedit()
 ```
 
+Another unique feature of REDCapSync is the ability to upload labelled data. Currently, you can use R to modify data and then upload back to REDCap. For classic REDCap projects, without events or repeating instruments, uploading data is straightforward. For more complex data, you must follow the same rules as the REDCap data import tool (using `redcap_event_name`, `redcap_repeat_instrument`, and `redcap_repeat_instance`). RosyREDCap is developing ways to modify this data without having to understand these details. 
+
 ## Uploads
 
-```{r eval=FALSE, message=FALSE}
+```{r, eval=FALSE, message=FALSE}
 project <- load_project("TEST_CLASSIC")$sync()
 
 upload_this <- data.frame(record_id = as.character(51:100),
@@ -425,6 +441,32 @@ upload_this <- data.frame(record_id = as.character(51:100),
 project$upload(upload_this)
 # future dev will have comparisons/checks and calculated fields (from R).
 ```
+
+We are also developing a way to reimport saved excel files to send back to REDCap!
+
+```{r, eval=FALSE, message=FALSE}
+project <- setup_project(
+  project_name = "TEST_CLASSIC",
+  redcap_uri = "https://redcap.fake.edu/api/",
+  dir_path = getwd()
+)
+excel_edits <- project$.internal |> REDCapSync:::read_dataset_from_file("REDCapSync")
+```
+
+## PDF Rmarkdown reports (dev)
+
+You also need to install `tinytex` and `reticulate`. PDF currently working on mac but not windows. HTML should work but is not being actively developed unless requested.
+
+```{r, eval=FALSE, message=FALSE}
+REDCapSync:::TEST_PROJECT_NAMES
+# need to specify dir for tests, not real projs
+dir_other <- getwd() |> file.path("output") 
+projects$load("TEST_CLASSIC")$sync() |> rmarkdown_project(dir_other)
+projects$load("TEST_REPEATING")$sync() |> rmarkdown_project(dir_other)
+projects$load("TEST_LONGITUDINAL")$sync() |> rmarkdown_project(dir_other)
+projects$load("TEST_REDCAPR_SIMPLE")$sync() |> rmarkdown_project(dir_other)
+```
+
 
 For more advanced features/feedback consider reaching out to the developer [TheCodingDocs\@gmail.com](mailto:TheCodingDocs@gmail.com).
 
